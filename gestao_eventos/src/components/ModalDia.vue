@@ -26,6 +26,7 @@
         <!-- Vista de Formulário (usando v-model para capturar dados) -->
         <div v-else class="formulario-evento">
           <input v-model="novoTitulo" placeholder="Título do Evento" class="input-form" />
+          <input v-model="novaData" type="date" class="input-form" required />
           <select v-model="novoTipo" class="input-form">
             <option value="reuniao">Reunião</option>
             <option value="conferencia">Conferência</option>
@@ -36,7 +37,7 @@
 
       <footer class="modal-rodape">
         <!-- so mostra o botao se tiver fora do forms e for adm-->
-        <button v-if="!mostrandoFormulario && utilizadorAtual?.papel === 'admin'" class="btn-adicionar-modal" @click="mostrandoFormulario = true">
+        <button v-if="!mostrandoFormulario && utilizadorAtual?.papel === 'admin'" class="btn-adicionar-modal" @click="abrirParaNovoEvento">
           + Novo Evento
         </button>
         <div v-if="mostrandoFormulario" class="botoes-form">
@@ -64,13 +65,24 @@ const mostrandoFormulario = ref(false)
 const eventoEditandoId = ref(null) // Guarda o ID se estivermos a editar
 
 const novoTitulo = ref('')
+const novaData = ref('')
 const novoTipo = ref('reuniao')
 const novasPessoas = ref('')
+
+//marca um dia mas deixa pra editar tbm
+
+const abrirParaNovoEvento = () => {
+  const mesFormatado = props.mes.toString().padStart(2, '0')
+  const diaFormatado = props.dia.toString().padStart(2, '0')
+  novaData.value = `${props.ano}-${mesFormatado}-${diaFormatado}`
+  mostrandoFormulario.value = true
+}
 
 // Preenche o formulário com os dados do evento clicado
 const prepararEdicao = (evento) => {
   eventoEditandoId.value = evento.id
   novoTitulo.value = evento.titulo
+  novaData.value = evento.data
   novoTipo.value = evento.tipo
   novasPessoas.value = evento.pessoas.join(', ')
   mostrandoFormulario.value = true
@@ -80,21 +92,19 @@ const cancelarFormulario = () => {
   mostrandoFormulario.value = false
   eventoEditandoId.value = null
   novoTitulo.value = ''
+  novaData.value = ''
   novasPessoas.value = ''
 }
 
 const guardarEvento = () => {
-  if (!novoTitulo.value) {
+  if (!novoTitulo.value || !novaData.value) {
     alert("O título é obrigatório!")
     return
   }
 
-  const mesFormatado = props.mes.toString().padStart(2, '0')
-  const diaFormatado = props.dia.toString().padStart(2, '0')
-  
   const dadosEvento = {
     titulo: novoTitulo.value,
-    data: `${props.ano}-${mesFormatado}-${diaFormatado}`,
+    data: novaData.value,
     tipo: novoTipo.value,
     pessoas: novasPessoas.value.split(',').map(p => p.trim())
   }

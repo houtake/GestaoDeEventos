@@ -8,21 +8,13 @@
       <form @submit.prevent="entrar">
         <div class="grupo-input">
           <label for="nome">Nome de Utilizador</label>
-          <input 
-            type="text" 
-            id="nome" 
-            v-model="nome" 
-            required 
-            placeholder="Digite o seu nome..." 
-          />
+          <input type="text" id="nome" v-model="nome" required placeholder="Digite o seu nome..." />
         </div>
 
+        <!-- senha -->
         <div class="grupo-input">
-          <label for="papel">Tipo de Acesso</label>
-          <select id="papel" v-model="papel">
-            <option value="espectador">Membro da Equipa (Apenas ver)</option>
-            <option value="admin">Administrador (Gerir Eventos)</option>
-          </select>
+          <label for="senha">Senha</label>
+          <input type="password" id="senha" v-model="senha" required placeholder="Digite a sua senha..." />
         </div>
 
         <button type="submit" class="btn-entrar">Entrar no Sistema</button>
@@ -40,7 +32,7 @@ const router = useRouter()
 
 // Variáveis para guardar o que o utilizador escreve
 const nome = ref('')
-const papel = ref('espectador') // Padrão mais seguro, como membro da equipa
+const senha = ref('')
 
 const entrar = async () => {
   if (!nome.value) return
@@ -55,7 +47,7 @@ const entrar = async () => {
       // Envia o nome e o papel escolhidos na tela
       body: JSON.stringify({ 
         nome: nome.value, 
-        papel: papel.value 
+        senha: senha.value 
       })
     })
 
