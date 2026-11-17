@@ -16,21 +16,31 @@ let eventosDb = [
 ];
 let proximoId = 3;
 
+// 1.5 Pré-cadastro de Usuários
+let usuariosDb = [
+  { id: 1, nome: "admin", senha: "123", papel: "admin" },
+  { id: 2, nome: "equipe", senha: "123", papel: "espectador" }
+];
+let proximoUsuarioId = 3;
+
 // 2. Rota de Login (Devolve o Token)
 app.post('/login', (req, res) => {
-  const { nome, papel } = req.body;
+  const { nome, senha } = req.body;
   
-  if (!nome) {
-    return res.status(400).json({ erro: "Nome é obrigatório para fazer login." });
+  const usuarioEncontrado = usuariosDb.find(u => u.nome === nome && u.senha === senha);
+
+  if (!usuarioEncontrado) {
+    console.log(`[LOGIN] Tentativa falhada para o utilizador: ${nome}`);
+    return res.status(401).json({ erro: "Nome de utilizador ou senha incorretos." });
   }
 
-  // Criamos um token simples simulado 
-  const token = `token-${nome}-${papel}-${Date.now()}`;
+  const token = `token-${usuarioEncontrado.nome}-${usuarioEncontrado.papel}-${Date.now()}`;
   
   const dataHora = new Date().toLocaleString('pt-BR');
-  console.log(`[${dataHora}] 👤 Login efetuado: ${nome} acessou como ${papel.toUpperCase()}`);
+  console.log(`[${dataHora}] Login efetuado: ${usuarioEncontrado.nome} acessou como ${usuarioEncontrado.papel.toUpperCase()}`);
   
-  res.json({ token, papel, nome });
+  // Devolvemos o token e os dados reais do utilizador encontrado
+  res.json({ token, papel: usuarioEncontrado.papel, nome: usuarioEncontrado.nome });
 });
 
 // 3. verificadorrrrrr
@@ -110,9 +120,30 @@ app.delete('/eventos/:id', verificarToken, (req, res) => {
   console.log("Evento Deletado com sucesso")
 });
 
+//admin
+
+app.get('/usuarios', verificarToken, (req, res) => {
+  res.json(usuariosDb);
+});
+
+app.post('/usuarios', verificarToken, (req, res) => {
+  const { nome, senha, papel } = req.body;
+  
+  if (usuariosDb.some(u => u.nome === nome)) {
+    return res.status(400).json({ erro: "Este nome de utilizador já existe." });
+  }
+
+  const novoUsuario = { id: proximoUsuarioId++, nome, senha, papel };
+  usuariosDb.push(novoUsuario);
+  
+  console.log(`[ADMIN] Novo utilizador criado: ${nome} (${papel})`);
+  res.status(201).json(novoUsuario);
+});
+
+
 // 5. Ligar o Servidor na porta 3000
 const PORTA = 3000;
 app.listen(PORTA, () => {
-  console.log(`✅ Servidor Backend rodando em http://localhost:${PORTA}`);
-  console.log(`🔐 Rotas protegidas (CRUD) aguardando Token.`);
+  console.log(` Servidor Backend rodando em http://localhost:${PORTA}`);
+  console.log(` Rotas protegidas (CRUD) aguardando Token.`);
 });
