@@ -1,6 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const Evento = require('./Evento');
+const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+const { text } = require('stream/consumers');
+
 
 const app = express();
 
@@ -8,6 +12,12 @@ const app = express();
 app.use(cors());
 // Permite que a API entenda informações enviadas no formato JSON
 app.use(express.json());
+
+const CHAVE_SECRETA_JWT = "ekaHW4sH3r3";
+
+const gerarHash = (textoPuro) => {
+  return crypto.createHash('sha256').update(textoPuro).digest('hex');
+}
 
 // 1. array de eventos pre cadastrados na memoria
 let eventosDb = [
@@ -18,8 +28,12 @@ let proximoId = 3;
 
 // 1.5 Pré-cadastro de Usuários
 let usuariosDb = [
-  { id: 1, nome: "admin", senha: "123", papel: "admin" },
-  { id: 2, nome: "equipe", senha: "123", papel: "espectador" }
+  { id: 1, nome: "admin",
+     senha: "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3", 
+     papel: "admin" },
+  { id: 2, nome: "equipe", 
+    senha: "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3", 
+    papel: "espectador" }
 ];
 let proximoUsuarioId = 3;
 
@@ -27,19 +41,24 @@ let proximoUsuarioId = 3;
 app.post('/login', (req, res) => {
   const { nome, senha } = req.body;
   
-  const usuarioEncontrado = usuariosDb.find(u => u.nome === nome && u.senha === senha);
+  const senhaHash = gerarHash(senha);
+
+  const usuarioEncontrado = usuariosDb.find(u => u.nome === nome && u.senha === senhaHash);
 
   if (!usuarioEncontrado) {
     console.log(`[LOGIN] Tentativa falhada para o utilizador: ${nome}`);
     return res.status(401).json({ erro: "Nome de utilizador ou senha incorretos." });
   }
 
-  const token = `token-${usuarioEncontrado.nome}-${usuarioEncontrado.papel}-${Date.now()}`;
-  
   const dataHora = new Date().toLocaleString('pt-BR');
   console.log(`[${dataHora}] Login efetuado: ${usuarioEncontrado.nome} acessou como ${usuarioEncontrado.papel.toUpperCase()}`);
   
-  // Devolvemos o token e os dados reais do utilizador encontrado
+const token = jwt.sign(
+    { id: usuarioEncontrado.id, nome: usuarioEncontrado.nome, papel: usuarioEncontrado.papel },
+    CHAVE_SECRETA_JWT,
+    { expiresIn: '4h' } 
+  );
+  
   res.json({ token, papel: usuarioEncontrado.papel, nome: usuarioEncontrado.nome });
 });
 
@@ -52,9 +71,15 @@ const verificarToken = (req, res, next) => {
   if (!token) {
     return res.status(401).json({ erro: "Acesso negado. Token não fornecido (Status 401)." });
   }
-  
-  // Se o token existe, permite que a requisição siga para a rota do CRUD
-  next(); 
+  jwt.verify(token, CHAVE_SECRETA_JWT, (err, dadosDecodificados) => {
+    if (err) {
+      console.log(`[SEGURANÇA] 🚨 Tentativa de acesso com token inválido ou expirado.`);
+      return res.status(401).json({ erro: "Token inválido ou expirado." });
+    }
+    
+    req.usuarioLogado = dadosDecodificados;
+    next(); 
+  });
 };
 
 // 4. Rotas do CRUD (Protegidas pelo 'verificarToken')
@@ -120,7 +145,7 @@ app.delete('/eventos/:id', verificarToken, (req, res) => {
   console.log("Evento Deletado com sucesso")
 });
 
-//admin
+//admin USUARIOS
 
 app.get('/usuarios', verificarToken, (req, res) => {
   res.json(usuariosDb);
@@ -133,7 +158,7 @@ app.post('/usuarios', verificarToken, (req, res) => {
     return res.status(400).json({ erro: "Este nome de utilizador já existe." });
   }
 
-  const novoUsuario = { id: proximoUsuarioId++, nome, senha, papel };
+  const novoUsuario = { id: proximoUsuarioId++, nome, senha: gerarHash(senha), papel };
   usuariosDb.push(novoUsuario);
   
   console.log(`[ADMIN] Novo utilizador criado: ${nome} (${papel})`);
