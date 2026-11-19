@@ -28,8 +28,12 @@
           <input v-model="novoTitulo" placeholder="Título do Evento" class="input-form" />
           <input v-model="novaData" type="date" class="input-form" required />
           <select v-model="novoTipo" class="input-form">
-            <option value="reuniao">Reunião</option>
-            <option value="conferencia">Conferência</option>
+            <option 
+              v-for="cat in categoriasDisponiveis"
+              :key="cat.id";
+              :value="cat.valor">
+              {{ cat.nome }}
+            </option>
           </select>
           <input v-model="novasPessoas" placeholder="Envolvidos (separados por vírgula)" class="input-form" />
         </div>
@@ -50,33 +54,34 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import CartaoEvento from './CartaoEvento.vue'
-import { utilizadorAtual } from '../data/auth.js'
+import { ref, onMounted } from 'vue';
+import CartaoEvento from './CartaoEvento.vue';
+import { utilizadorAtual,tokenAutenticacao } from '../data/auth.js';
 
 const props = defineProps({
   visivel: Boolean, dia: Number, mes: Number, ano: Number, eventos: Array
-})
+});
 
 // Adicionamos 'editar-evento'
-const emit = defineEmits(['fechar', 'adicionar', 'excluir-evento', 'editar-evento'])
+const emit = defineEmits(['fechar', 'adicionar', 'excluir-evento', 'editar-evento']);
 
-const mostrandoFormulario = ref(false)
-const eventoEditandoId = ref(null) // Guarda o ID se estivermos a editar
+const mostrandoFormulario = ref(false);
+const eventoEditandoId = ref(null); // Guarda o ID se estivermos a editar
 
-const novoTitulo = ref('')
-const novaData = ref('')
-const novoTipo = ref('reuniao')
-const novasPessoas = ref('')
+const novoTitulo = ref('');
+const novaData = ref('');
+const novoTipo = ref('reuniao');
+const novasPessoas = ref('');
+const categoriasDisponiveis = ref([]);
 
 //marca um dia mas deixa pra editar tbm
 
 const abrirParaNovoEvento = () => {
-  const mesFormatado = props.mes.toString().padStart(2, '0')
-  const diaFormatado = props.dia.toString().padStart(2, '0')
-  novaData.value = `${props.ano}-${mesFormatado}-${diaFormatado}`
-  mostrandoFormulario.value = true
-}
+  const mesFormatado = props.mes.toString().padStart(2, '0');
+  const diaFormatado = props.dia.toString().padStart(2, '0');
+  novaData.value = `${props.ano}-${mesFormatado}-${diaFormatado}`;
+  mostrandoFormulario.value = true;
+};
 
 // Preenche o formulário com os dados do evento clicado
 const prepararEdicao = (evento) => {
@@ -116,6 +121,23 @@ const guardarEvento = () => {
     // Se não temos, é uma criação
     emit('adicionar', dadosEvento)
   }
+  const carregarCategorias = async () => {
+  if (!tokenAutenticacao.value) return
+  try {
+    const resposta = await fetch('http://localhost:3000/tipos-evento', {
+      headers: { 'Authorization': tokenAutenticacao.value }
+    })
+    if (resposta.ok) {
+      categoriasDisponiveis.value = await resposta.json()
+    }
+  } catch (erro) {
+    console.error("Erro ao carregar categorias:", erro)
+  }
+}
+
+onMounted(() => {
+  carregarCategorias()
+})
   
   cancelarFormulario()
 }

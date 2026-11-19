@@ -37,6 +37,12 @@ let usuariosDb = [
 ];
 let proximoUsuarioId = 3;
 
+let tiposEventoDb = [
+  { id: 1, nome: "Reunião", valor: "reuniao" },
+  { id: 2, nome: "Conferência", valor: "conferencia" }
+];
+let proximoTipoId = 3;
+
 // 2. Rota de Login (Devolve o Token)
 app.post('/login', (req, res) => {
   const { nome, senha } = req.body;
@@ -163,6 +169,36 @@ app.post('/usuarios', verificarToken, (req, res) => {
   
   console.log(`[ADMIN] Novo utilizador criado: ${nome} (${papel})`);
   res.status(201).json(novoUsuario);
+});
+
+//admin CRIACAO DE CATEGORIAS
+
+app.get('/tipos-evento', verificarToken, (req, res) => {
+  res.json(tiposEventoDb);
+});
+
+app.post('/tipos-evento', verificarToken, (req, res) => {
+  if (req.usuarioLogado.papel !== 'admin') {
+    return res.status(403).json({ erro: "Apenas administradores podem criar categorias." });
+  }
+
+  const { nome } = req.body;
+  if (!nome || !nome.trim()) {
+    return res.status(400).json({ erro: "O nome da categoria é obrigatório." });
+  }
+
+  // Gera um valor limpo (ex: "Treinamento Interno" -> "treinamento-interno")
+  const valor = nome.trim().toLowerCase().replace(/\s+/g, '-');
+
+  if (tiposEventoDb.some(t => t.valor === valor)) {
+    return res.status(400).json({ erro: "Esta categoria já existe." });
+  }
+
+  const novoTipo = { id: proximoTipoId++, nome: nome.trim(), valor };
+  tiposEventoDb.push(novoTipo);
+
+  console.log(`[ADMIN] Nova categoria criada: ${novoTipo.nome}`);
+  res.status(201).json(novoTipo);
 });
 
 
